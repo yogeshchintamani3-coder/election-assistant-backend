@@ -54,6 +54,7 @@ export class AuthService {
   readonly isGoogleConfigured = computed(() => this.googleClientIdState().length > 0);
   readonly configLoaded = this.configLoadedState.asReadonly();
   readonly googleSdkReady = this.googleSdkReadyState.asReadonly();
+  readonly googleReady = computed(() => this.isGoogleConfigured() && this.googleSdkReadyState());
   readonly authLoading = this.authLoadingState.asReadonly();
   readonly authError = this.authErrorState.asReadonly();
   readonly publicEmails = this.publicEmailsState.asReadonly();
