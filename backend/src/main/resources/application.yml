@@ -1,5 +1,5 @@
 server:
-  port: 8080
+  port: ${PORT:8080}
 
 spring:
   application:
@@ -11,7 +11,7 @@ google:
     base-url: https://www.googleapis.com/civicinfo/v2
 
 cors:
-  allowed-origins: http://localhost:4200,http://localhost:8080
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4200,http://localhost:8080}
 
 cache:
   election-ttl-minutes: 60

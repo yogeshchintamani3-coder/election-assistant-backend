@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: election-assistant-backend
+    env: docker
+    rootDir: backend
+    plan: free
+    envVars:
+      - key: PORT
+        value: 8080
+      - key: GOOGLE_CIVIC_API_KEY
+        sync: false
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false
