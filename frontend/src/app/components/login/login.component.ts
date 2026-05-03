@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, inject, AfterViewInit, ElementRef, viewChild, effect, signal } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, AfterViewInit, ElementRef, viewChild, effect, signal, DestroyRef } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
@@ -405,10 +405,13 @@ export class LoginComponent implements AfterViewInit {
 
   readonly authService = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly googleBtnRef = viewChild<ElementRef<HTMLDivElement>>('googleBtn');
 
   readonly isRegisterMode = signal(false);
+  private googleButtonRendered = false;
+  private renderPollTimer: ReturnType<typeof setInterval> | null = null;
   nameField = '';
   emailField = '';
   passwordField = '';
@@ -421,10 +424,12 @@ export class LoginComponent implements AfterViewInit {
     });
 
     effect(() => {
-      if (this.authService.googleReady()) {
-        this.tryRenderGoogleButton();
+      if (this.authService.googleReady() && !this.googleButtonRendered) {
+        this.startRenderPolling();
       }
     });
+
+    this.destroyRef.onDestroy(() => this.clearRenderPolling());
   }
 
   ngAfterViewInit(): void {
@@ -436,10 +441,34 @@ export class LoginComponent implements AfterViewInit {
   }
 
   private tryRenderGoogleButton(): void {
-    if (!this.authService.googleReady()) { return; }
+    if (!this.authService.googleReady() || this.googleButtonRendered) { return; }
     const btnEl = this.googleBtnRef();
     if (btnEl) {
       this.authService.initializeGoogleSignIn(btnEl.nativeElement);
+      this.googleButtonRendered = true;
+      this.clearRenderPolling();
+    }
+  }
+
+  private startRenderPolling(): void {
+    this.clearRenderPolling();
+    this.tryRenderGoogleButton();
+    if (this.googleButtonRendered) { return; }
+
+    let attempts = 0;
+    this.renderPollTimer = setInterval(() => {
+      attempts++;
+      this.tryRenderGoogleButton();
+      if (this.googleButtonRendered || attempts >= 30) {
+        this.clearRenderPolling();
+      }
+    }, 100);
+  }
+
+  private clearRenderPolling(): void {
+    if (this.renderPollTimer) {
+      clearInterval(this.renderPollTimer);
+      this.renderPollTimer = null;
     }
   }
 
