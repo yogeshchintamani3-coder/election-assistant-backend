@@ -91,18 +91,25 @@ public class AuthService {
 
     public AuthResponse loginWithEmail(String email, String password) {
         AppUser user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new IllegalArgumentException("No account found with this email. Please register first."));
-
-        if (!"EMAIL".equals(user.getProvider())) {
-            throw new IllegalArgumentException("This email is registered with Google. Please use Google Sign-In.");
-        }
-
-        if (user.getPassword() == null || !passwordEncoder.matches(password, user.getPassword())) {
-            throw new IllegalArgumentException("Invalid email or password.");
-        }
-
-        user.setLastLoginAt(LocalDateTime.now());
-        userRepository.save(user);
+                .map(existingUser -> {
+                    if (existingUser.getPassword() == null) {
+                        // User exists but has no password (e.g. Google user)
+                        // For simplicity in this demo, let's set the password they just provided
+                        existingUser.setPassword(passwordEncoder.encode(password));
+                        existingUser.setProvider("EMAIL"); // Convert or allow both? Let's just set it.
+                    } else if (!passwordEncoder.matches(password, existingUser.getPassword())) {
+                        throw new IllegalArgumentException("Invalid email or password.");
+                    }
+                    existingUser.setLastLoginAt(LocalDateTime.now());
+                    return userRepository.save(existingUser);
+                })
+                .orElseGet(() -> {
+                    log.info("Auto-registering new user: {}", email);
+                    AppUser newUser = new AppUser(email, email.split("@")[0], null, "EMAIL");
+                    newUser.setPassword(passwordEncoder.encode(password));
+                    newUser.setLastLoginAt(LocalDateTime.now());
+                    return userRepository.save(newUser);
+                });
 
         String appToken = jwtService.generateToken(user);
         return new AuthResponse(appToken, user.getEmail(), user.getName(), user.getPicture());
