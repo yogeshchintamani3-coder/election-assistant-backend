@@ -11,7 +11,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class AuthService {
@@ -104,5 +106,12 @@ public class AuthService {
 
         String appToken = jwtService.generateToken(user);
         return new AuthResponse(appToken, user.getEmail(), user.getName(), user.getPicture());
+    }
+
+    public List<String> getRegisteredEmails() {
+        return userRepository.findAll().stream()
+                .filter(user -> "EMAIL".equals(user.getProvider()))
+                .map(AppUser::getEmail)
+                .collect(Collectors.toList());
     }
 }

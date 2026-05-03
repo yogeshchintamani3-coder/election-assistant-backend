@@ -82,7 +82,13 @@ import { AuthService } from '../../services/auth.service';
                 name="email"
                 placeholder="Enter your email"
                 required
-                autocomplete="email" />
+                autocomplete="email"
+                list="emailSuggestions" />
+              <datalist id="emailSuggestions">
+                @for (email of authService.publicEmails(); track email) {
+                  <option [value]="email"></option>
+                }
+              </datalist>
             </div>
             <div class="form-group">
               <label for="password">Password</label>

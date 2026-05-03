@@ -45,6 +45,7 @@ export class AuthService {
   private readonly googleClientIdState = signal<string>('');
   private readonly configLoadedState = signal<boolean>(false);
   private readonly googleSdkReadyState = signal<boolean>(false);
+  private readonly publicEmailsState = signal<string[]>([]);
   private googleInitialized = false;
 
   readonly token = this.tokenState.asReadonly();
@@ -53,15 +54,16 @@ export class AuthService {
   readonly isGoogleConfigured = computed(() => this.googleClientIdState().length > 0);
   readonly configLoaded = this.configLoadedState.asReadonly();
   readonly googleSdkReady = this.googleSdkReadyState.asReadonly();
-  readonly googleReady = computed(() => this.isGoogleConfigured() && this.googleSdkReadyState());
   readonly authLoading = this.authLoadingState.asReadonly();
   readonly authError = this.authErrorState.asReadonly();
+  readonly publicEmails = this.publicEmailsState.asReadonly();
 
   constructor() {
     console.log('[AuthService] Initializing...');
     this.restoreSession();
     this.loadPublicConfig();
     this.pollForGoogleSdk();
+    this.loadPublicEmails();
   }
 
   initializeGoogleSignIn(buttonElement: HTMLElement): void {
@@ -194,6 +196,14 @@ export class AuthService {
           }
           this.configLoadedState.set(true);
         }
+      });
+  }
+
+  private loadPublicEmails(): void {
+    this.http.get<string[]>(`${this.authUrl}/public-emails`)
+      .subscribe({
+        next: (emails) => this.publicEmailsState.set(emails),
+        error: (err) => console.error('[AuthService] Failed to load public emails:', err)
       });
   }
 
