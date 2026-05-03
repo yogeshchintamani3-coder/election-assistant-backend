@@ -1,0 +1,49 @@
+{
+  "app": {
+    "title": "Election Assistant",
+    "footer": "Powered by Google Civic Information API"
+  },
+  "nav": {
+    "home": "Countries",
+    "representatives": "Find Representatives",
+    "voterInfo": "Voter Info"
+  },
+  "home": {
+    "title": "Understand Elections Worldwide",
+    "subtitle": "Explore step-by-step election processes, timelines, and eligibility criteria for countries around the world.",
+    "whatYouLearn": "What You'll Learn",
+    "stepByStep": "Step-by-Step Process",
+    "keyDates": "Key Dates & Timelines",
+    "eligibility": "Eligibility Criteria",
+    "findReps": "Find Representatives"
+  },
+  "timeline": {
+    "steps": "Election Process Steps",
+    "keyDates": "Key Dates & Timeline",
+    "eligibility": "Eligibility to Vote"
+  },
+  "civic": {
+    "title": "Find Your Representatives",
+    "subtitle": "Enter a U.S. address to find your elected officials.",
+    "searchPlaceholder": "Enter an address",
+    "search": "Search",
+    "yourReps": "Your Representatives"
+  },
+  "voter": {
+    "title": "Voter Information",
+    "subtitle": "Find your polling location and registration information.",
+    "address": "Your Address",
+    "selectElection": "Select Election",
+    "find": "Find Voter Info",
+    "pollingLocations": "Polling Locations",
+    "earlyVoting": "Early Voting Sites",
+    "links": "Useful Links",
+    "registration": "Voter Registration",
+    "absentee": "Absentee Voting Info"
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "retry": "Retry"
+  }
+}

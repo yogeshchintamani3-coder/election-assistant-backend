@@ -1,0 +1,18 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: election-assistant
+
+google:
+  civic:
+    api-key: ${GOOGLE_CIVIC_API_KEY:}
+    base-url: https://www.googleapis.com/civicinfo/v2
+
+cors:
+  allowed-origins: http://localhost:4200,http://localhost:8080
+
+cache:
+  election-ttl-minutes: 60
+  representatives-ttl-minutes: 30
