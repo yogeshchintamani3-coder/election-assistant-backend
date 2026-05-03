@@ -1,6 +1,7 @@
 package com.election.assistant.config;
 
-import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
+import com.election.assistant.service.JwtService;
+import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -22,10 +23,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private static final String AUTHORIZATION_HEADER = "Authorization";
     private static final String BEARER_PREFIX = "Bearer ";
 
-    private final GoogleTokenVerifier googleTokenVerifier;
+    private final JwtService jwtService;
 
-    public JwtAuthenticationFilter(GoogleTokenVerifier googleTokenVerifier) {
-        this.googleTokenVerifier = googleTokenVerifier;
+    public JwtAuthenticationFilter(JwtService jwtService) {
+        this.jwtService = jwtService;
     }
 
     @Override
@@ -36,17 +37,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         if (authHeader != null && authHeader.startsWith(BEARER_PREFIX)) {
             String token = authHeader.substring(BEARER_PREFIX.length());
-            Optional<GoogleIdToken.Payload> payload = googleTokenVerifier.verify(token);
 
-            payload.ifPresent(p -> {
-                UsernamePasswordAuthenticationToken authentication =
-                        new UsernamePasswordAuthenticationToken(
-                                p.getEmail(),
-                                null,
-                                List.of(new SimpleGrantedAuthority("ROLE_USER"))
-                        );
-                SecurityContextHolder.getContext().setAuthentication(authentication);
-            });
+            if (!"guest-session".equals(token)) {
+                Optional<Claims> claims = jwtService.validateToken(token);
+                claims.ifPresent(c -> {
+                    UsernamePasswordAuthenticationToken authentication =
+                            new UsernamePasswordAuthenticationToken(
+                                    c.getSubject(),
+                                    null,
+                                    List.of(new SimpleGrantedAuthority("ROLE_USER"))
+                            );
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                });
+            }
         }
 
         filterChain.doFilter(request, response);

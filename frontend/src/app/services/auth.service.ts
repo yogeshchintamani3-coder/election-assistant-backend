@@ -1,4 +1,5 @@
 import { Injectable, signal, computed, NgZone, inject } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
 import { environment } from '../../environments/environment';
 
 declare const google: {
@@ -18,25 +19,47 @@ export interface UserProfile {
   readonly picture: string;
 }
 
+interface AuthResponse {
+  readonly token: string;
+  readonly email: string;
+  readonly name: string;
+  readonly picture: string;
+}
+
+interface PublicConfig {
+  readonly googleClientId: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class AuthService {
 
   private readonly ngZone = inject(NgZone);
+  private readonly http = inject(HttpClient);
+  private readonly authUrl = `${environment.apiBaseUrl}/api/auth`;
+  private readonly configUrl = `${environment.apiBaseUrl}/api/config`;
 
   private readonly tokenState = signal<string | null>(null);
   private readonly userState = signal<UserProfile | null>(null);
+  private readonly authLoadingState = signal<boolean>(false);
+  private readonly authErrorState = signal<string | null>(null);
+  private readonly googleClientIdState = signal<string>('');
+  private readonly configLoadedState = signal<boolean>(false);
 
   readonly token = this.tokenState.asReadonly();
   readonly user = this.userState.asReadonly();
   readonly isAuthenticated = computed(() => this.tokenState() !== null);
-  readonly isGoogleConfigured = computed(() => (environment.googleClientId ?? '').length > 0);
+  readonly isGoogleConfigured = computed(() => this.googleClientIdState().length > 0);
+  readonly configLoaded = this.configLoadedState.asReadonly();
+  readonly authLoading = this.authLoadingState.asReadonly();
+  readonly authError = this.authErrorState.asReadonly();
 
   constructor() {
     this.restoreSession();
+    this.loadPublicConfig();
   }
 
   initializeGoogleSignIn(buttonElement: HTMLElement): void {
-    const clientId = this.getClientId();
+    const clientId = this.googleClientIdState();
     if (!clientId) {
       return;
     }
@@ -56,6 +79,36 @@ export class AuthService {
       text: 'signin_with',
       shape: 'rectangular',
     });
+  }
+
+  loginWithEmail(email: string, password: string): void {
+    this.authLoadingState.set(true);
+    this.authErrorState.set(null);
+
+    this.http.post<AuthResponse>(`${this.authUrl}/login`, { email, password })
+      .subscribe({
+        next: (res) => this.handleAuthSuccess(res),
+        error: (err) => {
+          const message = err.error?.message ?? 'Login failed. Please check your credentials.';
+          this.authErrorState.set(message);
+          this.authLoadingState.set(false);
+        }
+      });
+  }
+
+  registerWithEmail(name: string, email: string, password: string): void {
+    this.authLoadingState.set(true);
+    this.authErrorState.set(null);
+
+    this.http.post<AuthResponse>(`${this.authUrl}/register`, { name, email, password })
+      .subscribe({
+        next: (res) => this.handleAuthSuccess(res),
+        error: (err) => {
+          const message = err.error?.message ?? 'Registration failed. Please try again.';
+          this.authErrorState.set(message);
+          this.authLoadingState.set(false);
+        }
+      });
   }
 
   signInAsGuest(): void {
@@ -83,26 +136,51 @@ export class AuthService {
     }
     this.tokenState.set(null);
     this.userState.set(null);
+    this.authErrorState.set(null);
     localStorage.removeItem('election-assistant-token');
     localStorage.removeItem('election-assistant-user');
   }
 
+  private loadPublicConfig(): void {
+    this.http.get<PublicConfig>(`${this.configUrl}/public`)
+      .subscribe({
+        next: (config) => {
+          this.googleClientIdState.set(config.googleClientId ?? '');
+          this.configLoadedState.set(true);
+        },
+        error: () => {
+          this.configLoadedState.set(true);
+        }
+      });
+  }
+
   private handleCredentialResponse(response: { credential: string }): void {
-    const token = response.credential;
-    const payload = this.decodeJwtPayload(token);
+    const googleIdToken = response.credential;
+    this.authLoadingState.set(true);
+    this.authErrorState.set(null);
 
-    if (payload) {
-      const user: UserProfile = {
-        email: String(payload['email'] ?? ''),
-        name: String(payload['name'] ?? ''),
-        picture: String(payload['picture'] ?? ''),
-      };
+    this.http.post<AuthResponse>(`${this.authUrl}/google`, { idToken: googleIdToken })
+      .subscribe({
+        next: (res) => this.handleAuthSuccess(res),
+        error: () => {
+          this.authErrorState.set('Google authentication failed. Please try again.');
+          this.authLoadingState.set(false);
+        }
+      });
+  }
 
-      this.tokenState.set(token);
-      this.userState.set(user);
-      localStorage.setItem('election-assistant-token', token);
-      localStorage.setItem('election-assistant-user', JSON.stringify(user));
-    }
+  private handleAuthSuccess(authResponse: AuthResponse): void {
+    const user: UserProfile = {
+      email: authResponse.email,
+      name: authResponse.name,
+      picture: authResponse.picture ?? '',
+    };
+
+    this.tokenState.set(authResponse.token);
+    this.userState.set(user);
+    localStorage.setItem('election-assistant-token', authResponse.token);
+    localStorage.setItem('election-assistant-user', JSON.stringify(user));
+    this.authLoadingState.set(false);
   }
 
   private restoreSession(): void {
@@ -141,9 +219,5 @@ export class AuthService {
     } catch {
       return null;
     }
-  }
-
-  private getClientId(): string {
-    return environment.googleClientId ?? '';
   }
 }

@@ -1,11 +1,12 @@
-import { Component, ChangeDetectionStrategy, inject, AfterViewInit, ElementRef, viewChild } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, AfterViewInit, ElementRef, viewChild, effect, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [],
+  imports: [FormsModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="login-page">
@@ -14,21 +15,92 @@ import { AuthService } from '../../services/auth.service';
           <span class="material-icons-outlined">how_to_vote</span>
         </div>
         <h1>Welcome to Election Assistant</h1>
-        <p class="login-subtitle">Sign in to access representative lookup and voter information features.</p>
+        <p class="login-subtitle">Sign in to access representative lookup and voter information.</p>
 
-        @if (authService.isGoogleConfigured()) {
-          <div class="google-btn-wrapper">
-            <div #googleBtn aria-label="Sign in with Google"></div>
-          </div>
-          <div class="divider">
-            <span>or</span>
+        @if (authService.authError(); as error) {
+          <div class="error-msg" role="alert">
+            <span class="material-icons-outlined">error_outline</span>
+            <span>{{ error }}</span>
           </div>
         }
 
-        <button class="guest-btn" (click)="signInAsGuest()" aria-label="Continue as Guest">
-          <span class="material-icons-outlined">person_outline</span>
-          <span>Continue as Guest</span>
-        </button>
+        @if (authService.authLoading()) {
+          <div class="loading-wrapper" aria-busy="true">
+            <div class="spinner"></div>
+            <p>{{ isRegisterMode() ? 'Creating your account...' : 'Signing you in...' }}</p>
+          </div>
+        } @else {
+
+          <!-- Tab Switcher -->
+          <div class="tab-switcher">
+            <button
+              [class.active]="!isRegisterMode()"
+              (click)="isRegisterMode.set(false)"
+              type="button">Sign In</button>
+            <button
+              [class.active]="isRegisterMode()"
+              (click)="isRegisterMode.set(true)"
+              type="button">Register</button>
+          </div>
+
+          <!-- Email/Password Form -->
+          <form class="email-form" (ngSubmit)="onEmailSubmit()">
+            @if (isRegisterMode()) {
+              <div class="form-group">
+                <label for="name">Full Name</label>
+                <input
+                  id="name"
+                  type="text"
+                  [(ngModel)]="nameField"
+                  name="name"
+                  placeholder="Enter your full name"
+                  required
+                  autocomplete="name" />
+              </div>
+            }
+            <div class="form-group">
+              <label for="email">Email</label>
+              <input
+                id="email"
+                type="email"
+                [(ngModel)]="emailField"
+                name="email"
+                placeholder="Enter your email"
+                required
+                autocomplete="email" />
+            </div>
+            <div class="form-group">
+              <label for="password">Password</label>
+              <input
+                id="password"
+                type="password"
+                [(ngModel)]="passwordField"
+                name="password"
+                placeholder="Enter your password"
+                required
+                autocomplete="current-password"
+                minlength="6" />
+            </div>
+            <button type="submit" class="submit-btn">
+              <span class="material-icons-outlined">{{ isRegisterMode() ? 'person_add' : 'login' }}</span>
+              <span>{{ isRegisterMode() ? 'Create Account' : 'Sign In' }}</span>
+            </button>
+          </form>
+
+          @if (authService.isGoogleConfigured()) {
+            <div class="divider"><span>or</span></div>
+            <div class="google-btn-wrapper">
+              <div #googleBtn aria-label="Sign in with Google"></div>
+            </div>
+          }
+
+          <div class="divider"><span>or</span></div>
+
+          <button class="guest-btn" (click)="signInAsGuest()" aria-label="Continue as Guest">
+            <span class="material-icons-outlined">person_outline</span>
+            <span>Continue as Guest</span>
+          </button>
+        }
 
         <p class="login-note">
           <span class="material-icons-outlined">info</span>
@@ -84,14 +156,151 @@ import { AuthService } from '../../services/auth.service';
     .login-subtitle {
       font-size: var(--font-size-sm);
       color: var(--color-text-secondary);
-      margin-bottom: var(--spacing-xl);
+      margin-bottom: var(--spacing-lg);
       line-height: 1.6;
     }
+
+    .error-msg {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--spacing-xs);
+      padding: var(--spacing-sm) var(--spacing-md);
+      margin-bottom: var(--spacing-md);
+      background: var(--color-error-bg);
+      border: 1px solid var(--color-error-border);
+      border-radius: var(--radius-md);
+      color: var(--color-error);
+      font-size: var(--font-size-sm);
+    }
+
+    .error-msg .material-icons-outlined { font-size: 18px; }
+
+    .loading-wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: var(--spacing-md);
+      padding: var(--spacing-xl) 0;
+    }
+
+    .spinner {
+      width: 36px;
+      height: 36px;
+      border: 3px solid var(--color-border);
+      border-top-color: var(--color-primary);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .loading-wrapper p {
+      font-size: var(--font-size-sm);
+      color: var(--color-text-secondary);
+    }
+
+    .tab-switcher {
+      display: flex;
+      background: var(--color-bg-sidebar);
+      border-radius: var(--radius-lg);
+      padding: 4px;
+      margin-bottom: var(--spacing-lg);
+      border: 1px solid var(--color-border);
+    }
+
+    .tab-switcher button {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      border-radius: var(--radius-md);
+      background: transparent;
+      color: var(--color-text-secondary);
+      font-size: var(--font-size-sm);
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all 0.25s ease;
+    }
+
+    .tab-switcher button.active {
+      background: var(--color-primary);
+      color: var(--color-text-inverse);
+      box-shadow: 0 2px 8px rgba(26, 86, 219, 0.3);
+    }
+
+    .email-form {
+      display: flex;
+      flex-direction: column;
+      gap: var(--spacing-md);
+      margin-bottom: var(--spacing-md);
+      text-align: left;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .form-group label {
+      font-size: var(--font-size-xs);
+      font-weight: 600;
+      color: var(--color-text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .form-group input {
+      padding: 10px 14px;
+      border: 2px solid var(--color-border);
+      border-radius: var(--radius-md);
+      font-size: var(--font-size-sm);
+      font-family: inherit;
+      color: var(--color-text-primary);
+      background: var(--color-bg);
+      transition: border-color 0.25s ease, box-shadow 0.25s ease;
+    }
+
+    .form-group input:focus {
+      outline: none;
+      border-color: var(--color-primary);
+      box-shadow: 0 0 0 3px rgba(26, 86, 219, 0.1);
+    }
+
+    .form-group input::placeholder {
+      color: var(--color-text-muted);
+    }
+
+    .submit-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--spacing-sm);
+      width: 100%;
+      padding: 12px;
+      background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
+      border: none;
+      border-radius: var(--radius-lg);
+      color: var(--color-text-inverse);
+      font-size: var(--font-size-base);
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .submit-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 16px rgba(26, 86, 219, 0.4);
+    }
+
+    .submit-btn .material-icons-outlined { font-size: 20px; }
 
     .google-btn-wrapper {
       display: flex;
       justify-content: center;
-      margin-bottom: var(--spacing-md);
+      margin-bottom: var(--spacing-sm);
       min-height: 44px;
     }
 
@@ -99,7 +308,7 @@ import { AuthService } from '../../services/auth.service';
       display: flex;
       align-items: center;
       gap: var(--spacing-md);
-      margin-bottom: var(--spacing-md);
+      margin: var(--spacing-md) 0;
       color: var(--color-text-muted);
       font-size: var(--font-size-xs);
     }
@@ -123,25 +332,21 @@ import { AuthService } from '../../services/auth.service';
       border: 2px solid var(--color-border);
       border-radius: var(--radius-lg);
       color: var(--color-text-primary);
-      font-size: var(--font-size-base);
+      font-size: var(--font-size-sm);
       font-weight: 600;
       font-family: inherit;
       cursor: pointer;
       transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      margin-bottom: var(--spacing-xl);
+      margin-bottom: var(--spacing-lg);
     }
 
     .guest-btn:hover {
-      background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
-      color: var(--color-text-inverse);
       border-color: var(--color-primary);
-      transform: translateY(-2px);
-      box-shadow: 0 4px 16px rgba(26, 86, 219, 0.3);
+      color: var(--color-primary);
+      transform: translateY(-1px);
     }
 
-    .guest-btn .material-icons-outlined {
-      font-size: 20px;
-    }
+    .guest-btn .material-icons-outlined { font-size: 18px; }
 
     .login-note {
       display: flex;
@@ -152,9 +357,7 @@ import { AuthService } from '../../services/auth.service';
       color: var(--color-text-muted);
     }
 
-    .login-note .material-icons-outlined {
-      font-size: 14px;
-    }
+    .login-note .material-icons-outlined { font-size: 14px; }
   `]
 })
 export class LoginComponent implements AfterViewInit {
@@ -164,21 +367,52 @@ export class LoginComponent implements AfterViewInit {
 
   readonly googleBtnRef = viewChild<ElementRef<HTMLDivElement>>('googleBtn');
 
+  readonly isRegisterMode = signal(false);
+  nameField = '';
+  emailField = '';
+  passwordField = '';
+
+  constructor() {
+    effect(() => {
+      if (this.authService.isAuthenticated() && !this.authService.authLoading()) {
+        this.router.navigate(['/']);
+      }
+    });
+
+    effect(() => {
+      if (this.authService.isGoogleConfigured() && this.authService.configLoaded()) {
+        setTimeout(() => this.tryRenderGoogleButton(), 100);
+      }
+    });
+  }
+
   ngAfterViewInit(): void {
     if (this.authService.isAuthenticated()) {
       this.router.navigate(['/']);
       return;
     }
+    this.tryRenderGoogleButton();
+  }
 
-    if (this.authService.isGoogleConfigured()) {
-      try {
-        const btnEl = this.googleBtnRef();
-        if (btnEl) {
-          this.authService.initializeGoogleSignIn(btnEl.nativeElement);
-        }
-      } catch {
-        // Google SDK may not be loaded yet
+  private tryRenderGoogleButton(): void {
+    if (!this.authService.isGoogleConfigured()) { return; }
+    try {
+      const btnEl = this.googleBtnRef();
+      if (btnEl) {
+        this.authService.initializeGoogleSignIn(btnEl.nativeElement);
       }
+    } catch {
+      // Google SDK may not be loaded yet
+    }
+  }
+
+  onEmailSubmit(): void {
+    if (this.isRegisterMode()) {
+      if (!this.nameField || !this.emailField || !this.passwordField) { return; }
+      this.authService.registerWithEmail(this.nameField, this.emailField, this.passwordField);
+    } else {
+      if (!this.emailField || !this.passwordField) { return; }
+      this.authService.loginWithEmail(this.emailField, this.passwordField);
     }
   }
 

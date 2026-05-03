@@ -52,6 +52,7 @@ import { AuthService } from './services/auth.service';
                   } @else {
                     <span class="material-icons-outlined user-avatar-icon">account_circle</span>
                   }
+                  <span class="user-name">{{ user.name }}</span>
                 }
                 <button class="auth-btn sign-out-btn" (click)="signOut()" aria-label="Sign out">
                   <span class="material-icons-outlined">logout</span>
@@ -328,6 +329,16 @@ import { AuthService } from './services/auth.service';
       color: var(--color-text-muted);
     }
 
+    .user-name {
+      font-size: var(--font-size-sm);
+      font-weight: 500;
+      color: var(--color-text-secondary);
+      max-width: 120px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
     .auth-btn {
       display: flex;
       align-items: center;
@@ -438,6 +449,9 @@ import { AuthService } from './services/auth.service';
         display: block;
       }
       .logo-text {
+        display: none;
+      }
+      .user-name {
         display: none;
       }
     }

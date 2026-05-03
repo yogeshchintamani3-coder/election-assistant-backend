@@ -39,21 +39,20 @@ class ElectionProcessServiceTest {
     }
 
     @Test
-    void getElectionProcesses_usReturnsPresidentialAndCongressional() {
+    void getElectionProcesses_usReturnsFourTypes() {
         List<ElectionProcess> processes = service.getElectionProcesses("US");
-        assertEquals(2, processes.size());
+        assertEquals(4, processes.size());
 
         List<String> types = processes.stream()
                 .map(ElectionProcess::electionType)
                 .toList();
-        assertTrue(types.contains("Presidential"));
-        assertTrue(types.contains("Congressional"));
+        assertTrue(types.containsAll(List.of("Presidential", "Congressional", "State", "Local")));
     }
 
     @Test
-    void getElectionProcesses_indiaReturnsLokSabhaAndVidhaSabha() {
+    void getElectionProcesses_indiaReturnsThreeTypes() {
         List<ElectionProcess> processes = service.getElectionProcesses("IN");
-        assertEquals(2, processes.size());
+        assertEquals(3, processes.size());
     }
 
     @Test
