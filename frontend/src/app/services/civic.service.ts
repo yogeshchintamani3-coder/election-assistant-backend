@@ -1,12 +1,13 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { ElectionResponse, RepresentativeResponse, VoterInfoResponse } from '../models/election.model';
+import { environment } from '../../environments/environment';
 
 @Injectable({ providedIn: 'root' })
 export class CivicService {
 
   private readonly http = inject(HttpClient);
-  private readonly baseUrl = '/api/civic';
+  private readonly baseUrl = `${environment.apiBaseUrl}/api/civic`;
 
   private readonly electionsState = signal<ElectionResponse[]>([]);
   private readonly representativesState = signal<RepresentativeResponse[]>([]);

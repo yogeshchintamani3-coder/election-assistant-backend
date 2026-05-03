@@ -1,12 +1,13 @@
 import { Injectable, inject, signal, computed } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Country, ElectionProcess } from '../models/election.model';
+import { environment } from '../../environments/environment';
 
 @Injectable({ providedIn: 'root' })
 export class ElectionService {
 
   private readonly http = inject(HttpClient);
-  private readonly baseUrl = '/api/election-process';
+  private readonly baseUrl = `${environment.apiBaseUrl}/api/election-process`;
 
   private readonly countriesState = signal<Country[]>([]);
   private readonly selectedProcessState = signal<ElectionProcess | null>(null);
