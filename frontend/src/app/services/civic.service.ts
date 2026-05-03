@@ -1,7 +1,8 @@
 import { Injectable, inject, signal } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { ElectionResponse, RepresentativeResponse, VoterInfoResponse } from '../models/election.model';
 import { environment } from '../../environments/environment';
+import { retry } from 'rxjs';
 
 @Injectable({ providedIn: 'root' })
 export class CivicService {
@@ -25,13 +26,15 @@ export class CivicService {
     this.loadingState.set(true);
     this.errorState.set(null);
 
-    this.http.get<ElectionResponse[]>(`${this.baseUrl}/elections`).subscribe({
+    this.http.get<ElectionResponse[]>(`${this.baseUrl}/elections`).pipe(
+      retry(2)
+    ).subscribe({
       next: (elections) => {
         this.electionsState.set(elections);
         this.loadingState.set(false);
       },
-      error: () => {
-        this.errorState.set('Failed to load elections');
+      error: (err: HttpErrorResponse) => {
+        this.errorState.set(this.getErrorMessage(err, 'load elections'));
         this.loadingState.set(false);
       }
     });
@@ -44,13 +47,15 @@ export class CivicService {
 
     this.http.get<RepresentativeResponse[]>(`${this.baseUrl}/representatives`, {
       params: { address }
-    }).subscribe({
+    }).pipe(
+      retry(2)
+    ).subscribe({
       next: (reps) => {
         this.representativesState.set(reps);
         this.loadingState.set(false);
       },
-      error: () => {
-        this.errorState.set('Failed to find representatives. Please check the address.');
+      error: (err: HttpErrorResponse) => {
+        this.errorState.set(this.getErrorMessage(err, 'find representatives'));
         this.loadingState.set(false);
       }
     });
@@ -63,15 +68,30 @@ export class CivicService {
 
     this.http.get<VoterInfoResponse>(`${this.baseUrl}/voter-info`, {
       params: { address, electionId }
-    }).subscribe({
+    }).pipe(
+      retry(2)
+    ).subscribe({
       next: (info) => {
         this.voterInfoState.set(info);
         this.loadingState.set(false);
       },
-      error: () => {
-        this.errorState.set('Failed to load voter information');
+      error: (err: HttpErrorResponse) => {
+        this.errorState.set(this.getErrorMessage(err, 'load voter information'));
         this.loadingState.set(false);
       }
     });
+  }
+
+  private getErrorMessage(err: HttpErrorResponse, action: string): string {
+    if (err.status === 0) {
+      return `Unable to connect to the server. Please check your network connection.`;
+    }
+    if (err.status === 404) {
+      return `No data found for this request. The information may not be available yet.`;
+    }
+    if (err.status === 502) {
+      return `The Google Civic API is temporarily unavailable. Please try again later.`;
+    }
+    return `Failed to ${action}. Please try again.`;
   }
 }

@@ -225,8 +225,8 @@ import { StepCardComponent } from '../step-card/step-card.component';
       align-items: center;
       gap: var(--spacing-md);
       padding: var(--spacing-md) var(--spacing-lg);
-      background: #fef2f2;
-      border: 1px solid #fecaca;
+      background: var(--color-error-bg);
+      border: 1px solid var(--color-error-border);
       border-radius: var(--radius-md);
       color: var(--color-error);
     }

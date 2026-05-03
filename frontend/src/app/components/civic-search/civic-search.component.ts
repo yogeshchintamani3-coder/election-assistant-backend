@@ -48,6 +48,14 @@ import { CivicService } from '../../services/civic.service';
         </div>
       }
 
+      @if (!civicService.loading() && hasSearched() && civicService.representatives().length === 0 && !civicService.error()) {
+        <div class="empty-state">
+          <span class="material-icons-outlined empty-icon">search_off</span>
+          <h3>No Representatives Found</h3>
+          <p>No results were returned for this address. Please verify it is a valid U.S. address and try again.</p>
+        </div>
+      }
+
       @if (civicService.representatives().length > 0) {
         <div class="results-section">
           <div class="results-header">
@@ -240,12 +248,42 @@ import { CivicService } from '../../services/civic.service';
       align-items: center;
       gap: var(--spacing-md);
       padding: var(--spacing-md) var(--spacing-lg);
-      background: #fef2f2;
-      border: 1px solid #fecaca;
+      background: var(--color-error-bg);
+      border: 1px solid var(--color-error-border);
       border-radius: var(--radius-md);
       margin-bottom: var(--spacing-xl);
       color: var(--color-error);
       animation: fadeInUp 0.3s ease both;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: var(--spacing-2xl) var(--spacing-lg);
+      background: var(--color-bg-card);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-xl);
+      margin-bottom: var(--spacing-xl);
+      animation: fadeInUp 0.4s ease both;
+    }
+
+    .empty-icon {
+      font-size: 48px;
+      color: var(--color-text-muted);
+      margin-bottom: var(--spacing-md);
+    }
+
+    .empty-state h3 {
+      font-size: var(--font-size-lg);
+      font-weight: 600;
+      color: var(--color-text-primary);
+      margin-bottom: var(--spacing-sm);
+    }
+
+    .empty-state p {
+      font-size: var(--font-size-sm);
+      color: var(--color-text-secondary);
+      max-width: 400px;
+      margin: 0 auto;
     }
 
     .results-section {
@@ -420,6 +458,7 @@ export class CivicSearchComponent {
   protected readonly civicService = inject(CivicService);
   readonly address = signal('');
   readonly inputFocused = signal(false);
+  readonly hasSearched = signal(false);
 
   onAddressInput(event: Event): void {
     const target = event.target as HTMLInputElement;
@@ -429,6 +468,7 @@ export class CivicSearchComponent {
   search(): void {
     const addr = this.address().trim();
     if (addr) {
+      this.hasSearched.set(true);
       this.civicService.searchRepresentatives(addr);
     }
   }

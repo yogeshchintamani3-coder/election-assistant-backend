@@ -28,10 +28,21 @@ public class GoogleCivicService {
                               @Value("${google.civic.api-key}") String apiKey) {
         this.webClient = googleCivicWebClient;
         this.apiKey = apiKey;
+        if (apiKey == null || apiKey.isBlank()) {
+            log.warn("Google Civic API key is not configured. Civic API features will return empty results.");
+        }
     }
 
-    @Cacheable("elections")
+    private boolean isApiKeyConfigured() {
+        return apiKey != null && !apiKey.isBlank();
+    }
+
+    @Cacheable(value = "elections", unless = "#result == null || #result.isEmpty()")
     public List<ElectionResponse> getElections() {
+        if (!isApiKeyConfigured()) {
+            log.warn("Skipping elections fetch: API key not configured");
+            return Collections.emptyList();
+        }
         try {
             Map<String, Object> response = webClient.get()
                     .uri(uriBuilder -> uriBuilder
@@ -56,8 +67,12 @@ public class GoogleCivicService {
         }
     }
 
-    @Cacheable(value = "representatives", key = "#address")
+    @Cacheable(value = "representatives", key = "#address", unless = "#result == null || #result.isEmpty()")
     public List<RepresentativeResponse> getRepresentatives(String address) {
+        if (!isApiKeyConfigured()) {
+            log.warn("Skipping representatives fetch: API key not configured");
+            return Collections.emptyList();
+        }
         try {
             Map<String, Object> response = webClient.get()
                     .uri(uriBuilder -> uriBuilder
@@ -81,8 +96,12 @@ public class GoogleCivicService {
         }
     }
 
-    @Cacheable(value = "voterInfo", key = "#address + '_' + #electionId")
+    @Cacheable(value = "voterInfo", key = "#address + '_' + #electionId", unless = "#result == null")
     public VoterInfoResponse getVoterInfo(String address, String electionId) {
+        if (!isApiKeyConfigured()) {
+            log.warn("Skipping voter info fetch: API key not configured");
+            return null;
+        }
         try {
             Map<String, Object> response = webClient.get()
                     .uri(uriBuilder -> uriBuilder

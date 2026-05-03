@@ -39,12 +39,22 @@ import { CivicService } from '../../services/civic.service';
           <div class="input-wrapper">
             <span class="material-icons-outlined">ballot</span>
             <select class="form-input" [value]="selectedElection()" (change)="onElectionChange($event)">
-              <option value="">-- Select an election --</option>
-              @for (election of civicService.elections(); track election.id) {
-                <option [value]="election.id">{{ election.name }} ({{ election.electionDay }})</option>
+              @if (civicService.elections().length === 0) {
+                <option value="">No elections available</option>
+              } @else {
+                <option value="">-- Select an election --</option>
+                @for (election of civicService.elections(); track election.id) {
+                  <option [value]="election.id">{{ election.name }} ({{ election.electionDay }})</option>
+                }
               }
             </select>
           </div>
+          @if (!civicService.loading() && civicService.elections().length === 0 && !civicService.error()) {
+            <p class="helper-text">
+              <span class="material-icons-outlined">info</span>
+              No upcoming elections found. Election data is provided by the Google Civic Information API.
+            </p>
+          }
         </div>
 
         <button
@@ -275,6 +285,19 @@ import { CivicService } from '../../services/civic.service';
       cursor: pointer;
     }
 
+    .helper-text {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-xs);
+      margin-top: var(--spacing-sm);
+      font-size: var(--font-size-xs);
+      color: var(--color-text-muted);
+    }
+
+    .helper-text .material-icons-outlined {
+      font-size: 14px;
+    }
+
     .submit-btn {
       display: flex;
       align-items: center;
@@ -317,8 +340,8 @@ import { CivicService } from '../../services/civic.service';
       align-items: center;
       gap: var(--spacing-md);
       padding: var(--spacing-md) var(--spacing-lg);
-      background: #fef2f2;
-      border: 1px solid #fecaca;
+      background: var(--color-error-bg);
+      border: 1px solid var(--color-error-border);
       border-radius: var(--radius-md);
       margin-bottom: var(--spacing-xl);
       color: var(--color-error);

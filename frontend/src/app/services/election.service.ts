@@ -1,7 +1,8 @@
 import { Injectable, inject, signal, computed } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Country, ElectionProcess } from '../models/election.model';
 import { environment } from '../../environments/environment';
+import { retry } from 'rxjs';
 
 @Injectable({ providedIn: 'root' })
 export class ElectionService {
@@ -25,13 +26,19 @@ export class ElectionService {
     this.loadingState.set(true);
     this.errorState.set(null);
 
-    this.http.get<Country[]>(`${this.baseUrl}/countries`).subscribe({
+    this.http.get<Country[]>(`${this.baseUrl}/countries`).pipe(
+      retry(2)
+    ).subscribe({
       next: (countries) => {
         this.countriesState.set(countries);
         this.loadingState.set(false);
       },
-      error: () => {
-        this.errorState.set('Failed to load countries');
+      error: (err: HttpErrorResponse) => {
+        this.errorState.set(
+          err.status === 0
+            ? 'Unable to connect to the server. Please check your network connection.'
+            : 'Failed to load countries. Please try again.'
+        );
         this.loadingState.set(false);
       }
     });
@@ -42,13 +49,19 @@ export class ElectionService {
     this.errorState.set(null);
     this.selectedProcessState.set(null);
 
-    this.http.get<ElectionProcess>(`${this.baseUrl}/${countryCode}/${encodeURIComponent(electionType)}`).subscribe({
+    this.http.get<ElectionProcess>(`${this.baseUrl}/${countryCode}/${encodeURIComponent(electionType)}`).pipe(
+      retry(2)
+    ).subscribe({
       next: (process) => {
         this.selectedProcessState.set(process);
         this.loadingState.set(false);
       },
-      error: () => {
-        this.errorState.set('Failed to load election process');
+      error: (err: HttpErrorResponse) => {
+        this.errorState.set(
+          err.status === 404
+            ? 'Election process not found for this selection.'
+            : 'Failed to load election process. Please try again.'
+        );
         this.loadingState.set(false);
       }
     });
