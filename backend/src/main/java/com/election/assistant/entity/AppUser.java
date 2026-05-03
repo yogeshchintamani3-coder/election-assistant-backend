@@ -62,6 +62,7 @@ public class AppUser {
     public void setPassword(String password) { this.password = password; }
 
     public String getProvider() { return provider; }
+    public void setProvider(String provider) { this.provider = provider; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
 

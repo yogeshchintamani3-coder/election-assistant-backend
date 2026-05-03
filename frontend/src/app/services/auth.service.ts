@@ -45,7 +45,7 @@ export class AuthService {
   private readonly googleClientIdState = signal<string>('');
   private readonly configLoadedState = signal<boolean>(false);
   private readonly googleSdkReadyState = signal<boolean>(false);
-  private readonly publicEmailsState = signal<string[]>(['test@example.com']);
+  private readonly publicEmailsState = signal<string[]>([]);
   private googleInitialized = false;
 
   readonly token = this.tokenState.asReadonly();

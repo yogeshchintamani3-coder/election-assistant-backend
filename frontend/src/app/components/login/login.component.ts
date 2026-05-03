@@ -32,17 +32,19 @@ import { AuthService } from '../../services/auth.service';
         } @else {
 
           <!-- Google Sign-In button (always in DOM) -->
-          <div class="google-section">
-            <div class="google-btn-wrapper" [class.hidden]="!authService.googleReady()">
-              <div #googleBtn aria-label="Continue with Google"></div>
-            </div>
-            @if (!authService.googleReady()) {
-              <div class="google-loading">
-                <div class="spinner-sm"></div>
-                <span>Loading Google Sign-In...</span>
+          @if (authService.isGoogleConfigured() || !authService.configLoaded()) {
+            <div class="google-section">
+              <div class="google-btn-wrapper" [class.hidden]="!authService.googleReady()">
+                <div #googleBtn aria-label="Continue with Google"></div>
               </div>
-            }
-          </div>
+              @if (!authService.googleReady()) {
+                <div class="google-loading">
+                  <div class="spinner-sm"></div>
+                  <span>Loading Google Sign-In...</span>
+                </div>
+              }
+            </div>
+          }
 
           <div class="divider"><span>or sign in with email</span></div>
 
