@@ -424,6 +424,7 @@ export class LoginComponent implements AfterViewInit {
     });
 
     effect(() => {
+      console.log('[LoginComponent] googleReady state changed:', this.authService.googleReady());
       if (this.authService.googleReady() && !this.googleButtonRendered) {
         this.startRenderPolling();
       }
@@ -441,12 +442,18 @@ export class LoginComponent implements AfterViewInit {
   }
 
   private tryRenderGoogleButton(): void {
-    if (!this.authService.googleReady() || this.googleButtonRendered) { return; }
+    if (!this.authService.googleReady() || this.googleButtonRendered) {
+      if (this.googleButtonRendered) console.log('[LoginComponent] Google button already rendered');
+      return;
+    }
     const btnEl = this.googleBtnRef();
     if (btnEl) {
+      console.log('[LoginComponent] Rendering Google button into:', btnEl.nativeElement);
       this.authService.initializeGoogleSignIn(btnEl.nativeElement);
       this.googleButtonRendered = true;
       this.clearRenderPolling();
+    } else {
+      console.warn('[LoginComponent] Google button container not found in DOM yet');
     }
   }
 

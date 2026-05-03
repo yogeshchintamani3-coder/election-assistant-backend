@@ -58,6 +58,7 @@ export class AuthService {
   readonly authError = this.authErrorState.asReadonly();
 
   constructor() {
+    console.log('[AuthService] Initializing...');
     this.restoreSession();
     this.loadPublicConfig();
     this.pollForGoogleSdk();
@@ -179,10 +180,18 @@ export class AuthService {
     this.http.get<PublicConfig>(`${this.configUrl}/public`)
       .subscribe({
         next: (config) => {
-          this.googleClientIdState.set(config.googleClientId ?? '');
+          console.log('[AuthService] Public config loaded:', config);
+          const clientId = config.googleClientId || environment.googleClientId;
+          this.googleClientIdState.set(clientId);
           this.configLoadedState.set(true);
         },
-        error: () => {
+        error: (err) => {
+          console.error('[AuthService] Failed to load public config:', err);
+          const fallbackId = environment.googleClientId;
+          if (fallbackId) {
+            console.log('[AuthService] Using environment fallback for Google Client ID');
+            this.googleClientIdState.set(fallbackId);
+          }
           this.configLoadedState.set(true);
         }
       });
