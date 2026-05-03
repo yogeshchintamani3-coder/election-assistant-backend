@@ -37,6 +37,17 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(error);
     }
 
+    @ExceptionHandler(org.springframework.web.servlet.resource.NoResourceFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleNoResourceFound(org.springframework.web.servlet.resource.NoResourceFoundException ex) {
+        log.warn("Resource not found: {}", ex.getMessage());
+        ApiErrorResponse error = new ApiErrorResponse(
+                HttpStatus.NOT_FOUND.value(),
+                "Resource not found",
+                LocalDateTime.now()
+        );
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiErrorResponse> handleGenericError(Exception ex) {
         log.error("Unexpected error", ex);
