@@ -28,7 +28,7 @@ google:
     client-id: ${GOOGLE_OAUTH_CLIENT_ID:}
 
 cors:
-  allowed-origins: ${CORS_ALLOWED_ORIGINS:https://election-assistance-8c6f6.web.app}
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:https://election-assistance-8c6f6.web.app,http://localhost:4200}
 
 cache:
   election-ttl-minutes: 60
