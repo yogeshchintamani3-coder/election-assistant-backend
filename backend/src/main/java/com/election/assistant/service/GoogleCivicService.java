@@ -3,6 +3,8 @@ package com.election.assistant.service;
 import com.election.assistant.dto.ElectionResponse;
 import com.election.assistant.dto.RepresentativeResponse;
 import com.election.assistant.dto.VoterInfoResponse;
+import com.election.assistant.exception.ApiKeyNotConfiguredException;
+import com.election.assistant.exception.ExternalApiException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -20,6 +22,7 @@ import java.util.Map;
 public class GoogleCivicService {
 
     private static final Logger log = LoggerFactory.getLogger(GoogleCivicService.class);
+    private static final String SERVICE_NAME = "Google Civic Information API";
 
     private final WebClient webClient;
     private final String apiKey;
@@ -28,8 +31,8 @@ public class GoogleCivicService {
                               @Value("${google.civic.api-key}") String apiKey) {
         this.webClient = googleCivicWebClient;
         this.apiKey = apiKey;
-        if (apiKey == null || apiKey.isBlank()) {
-            log.warn("Google Civic API key is not configured. Civic API features will return empty results.");
+        if (!isApiKeyConfigured()) {
+            log.warn("Google Civic API key is not configured. Civic API features will be unavailable.");
         }
     }
 
@@ -37,12 +40,16 @@ public class GoogleCivicService {
         return apiKey != null && !apiKey.isBlank();
     }
 
-    @Cacheable(value = "elections", unless = "#result == null || #result.isEmpty()")
-    public List<ElectionResponse> getElections() {
+    private void requireApiKey() {
         if (!isApiKeyConfigured()) {
-            log.warn("Skipping elections fetch: API key not configured");
-            return Collections.emptyList();
+            throw new ApiKeyNotConfiguredException(SERVICE_NAME);
         }
+    }
+
+    @Cacheable(value = "elections", unless = "#result == null || #result.isEmpty()")
+    @SuppressWarnings("unchecked")
+    public List<ElectionResponse> getElections() {
+        requireApiKey();
         try {
             Map<String, Object> response = webClient.get()
                     .uri(uriBuilder -> uriBuilder
@@ -63,16 +70,14 @@ public class GoogleCivicService {
                     .toList();
         } catch (WebClientResponseException e) {
             log.error("Google Civic API error fetching elections: {} - {}", e.getStatusCode(), e.getResponseBodyAsString());
-            return Collections.emptyList();
+            throw new ExternalApiException(SERVICE_NAME, e.getStatusCode().value(), e.getResponseBodyAsString());
         }
     }
 
     @Cacheable(value = "representatives", key = "#address", unless = "#result == null || #result.isEmpty()")
+    @SuppressWarnings("unchecked")
     public List<RepresentativeResponse> getRepresentatives(String address) {
-        if (!isApiKeyConfigured()) {
-            log.warn("Skipping representatives fetch: API key not configured");
-            return Collections.emptyList();
-        }
+        requireApiKey();
         try {
             Map<String, Object> response = webClient.get()
                     .uri(uriBuilder -> uriBuilder
@@ -92,16 +97,14 @@ public class GoogleCivicService {
         } catch (WebClientResponseException e) {
             log.error("Google Civic API error fetching representatives for '{}': {} - {}",
                     address, e.getStatusCode(), e.getResponseBodyAsString());
-            return Collections.emptyList();
+            throw new ExternalApiException(SERVICE_NAME, e.getStatusCode().value(), e.getResponseBodyAsString());
         }
     }
 
     @Cacheable(value = "voterInfo", key = "#address + '_' + #electionId", unless = "#result == null")
+    @SuppressWarnings("unchecked")
     public VoterInfoResponse getVoterInfo(String address, String electionId) {
-        if (!isApiKeyConfigured()) {
-            log.warn("Skipping voter info fetch: API key not configured");
-            return null;
-        }
+        requireApiKey();
         try {
             Map<String, Object> response = webClient.get()
                     .uri(uriBuilder -> uriBuilder
@@ -122,7 +125,7 @@ public class GoogleCivicService {
         } catch (WebClientResponseException e) {
             log.error("Google Civic API error fetching voter info for '{}', election '{}': {} - {}",
                     address, electionId, e.getStatusCode(), e.getResponseBodyAsString());
-            return null;
+            throw new ExternalApiException(SERVICE_NAME, e.getStatusCode().value(), e.getResponseBodyAsString());
         }
     }
 
@@ -135,6 +138,7 @@ public class GoogleCivicService {
         );
     }
 
+    @SuppressWarnings("unchecked")
     private List<RepresentativeResponse> parseRepresentatives(Map<String, Object> response) {
         List<RepresentativeResponse> result = new ArrayList<>();
 
@@ -173,6 +177,7 @@ public class GoogleCivicService {
         return result;
     }
 
+    @SuppressWarnings("unchecked")
     private VoterInfoResponse parseVoterInfo(Map<String, Object> response) {
         Map<String, Object> election = (Map<String, Object>) response.getOrDefault("election", Map.of());
         List<Map<String, Object>> pollingLocations =

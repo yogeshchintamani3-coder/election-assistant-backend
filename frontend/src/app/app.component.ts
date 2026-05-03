@@ -1,6 +1,7 @@
-import { Component, ChangeDetectionStrategy } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, signal } from '@angular/core';
 import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { ThemeService } from './services/theme.service';
+import { AuthService } from './services/auth.service';
 
 @Component({
   selector: 'app-root',
@@ -8,20 +9,21 @@ import { ThemeService } from './services/theme.service';
   imports: [RouterOutlet, RouterLink, RouterLinkActive],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
+    <a class="skip-link" href="#main-content">Skip to content</a>
     <div class="app-layout">
       <header class="app-header">
         <div class="header-content">
-          <a routerLink="/" class="logo">
+          <a routerLink="/" class="logo" (click)="closeMobileMenu()">
             <div class="logo-icon-wrapper">
               <span class="logo-icon material-icons-outlined">how_to_vote</span>
               <span class="logo-pulse"></span>
             </div>
             <span class="logo-text">Election<span class="logo-highlight">Assistant</span></span>
           </a>
-          <nav class="nav-links">
+          <nav class="nav-links" aria-label="Main navigation">
             <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">
-              <span class="material-icons-outlined">public</span>
-              <span class="nav-label">Countries</span>
+              <span class="material-icons-outlined">school</span>
+              <span class="nav-label">Learning</span>
             </a>
             <a routerLink="/civic-search" routerLinkActive="active">
               <span class="material-icons-outlined">person_search</span>
@@ -32,14 +34,66 @@ import { ThemeService } from './services/theme.service';
               <span class="nav-label">Voter Info</span>
             </a>
           </nav>
-          <button class="theme-toggle" (click)="toggleTheme()" [attr.aria-label]="'Toggle theme'">
-            <span class="material-icons-outlined theme-icon" [class.rotating]="true">
-              {{ themeService.isDark() ? 'light_mode' : 'dark_mode' }}
-            </span>
+          <button
+            type="button"
+            class="mobile-menu-btn"
+            (click)="toggleMobileMenu()"
+            [attr.aria-expanded]="mobileMenuOpen()"
+            aria-controls="mobile-nav-drawer"
+            [attr.aria-label]="mobileMenuOpen() ? 'Close menu' : 'Open menu'">
+            <span class="material-icons-outlined">{{ mobileMenuOpen() ? 'close' : 'menu' }}</span>
           </button>
+          <div class="header-actions">
+            @if (authService.isAuthenticated()) {
+              <div class="user-info">
+                @if (authService.user(); as user) {
+                  @if (user.picture) {
+                    <img [src]="user.picture" [alt]="user.name" class="user-avatar" referrerpolicy="no-referrer" />
+                  } @else {
+                    <span class="material-icons-outlined user-avatar-icon">account_circle</span>
+                  }
+                }
+                <button class="auth-btn sign-out-btn" (click)="signOut()" aria-label="Sign out">
+                  <span class="material-icons-outlined">logout</span>
+                </button>
+              </div>
+            } @else {
+              <a routerLink="/login" class="auth-btn sign-in-btn" aria-label="Sign in">
+                <span class="material-icons-outlined">login</span>
+                <span class="auth-label">Sign In</span>
+              </a>
+            }
+            <button class="theme-toggle" (click)="toggleTheme()" aria-label="Toggle theme">
+              <span class="material-icons-outlined theme-icon">
+                {{ themeService.isDark() ? 'light_mode' : 'dark_mode' }}
+              </span>
+            </button>
+          </div>
         </div>
+        @if (mobileMenuOpen()) {
+          <div class="mobile-nav-overlay" (click)="closeMobileMenu()" role="presentation">
+            <nav
+              id="mobile-nav-drawer"
+              class="mobile-nav-drawer"
+              (click)="$event.stopPropagation()"
+              aria-label="Main navigation">
+              <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}" (click)="closeMobileMenu()">
+                <span class="material-icons-outlined">school</span>
+                <span class="nav-label">Learning</span>
+              </a>
+              <a routerLink="/civic-search" routerLinkActive="active" (click)="closeMobileMenu()">
+                <span class="material-icons-outlined">person_search</span>
+                <span class="nav-label">Representatives</span>
+              </a>
+              <a routerLink="/voter-info" routerLinkActive="active" (click)="closeMobileMenu()">
+                <span class="material-icons-outlined">location_on</span>
+                <span class="nav-label">Voter Info</span>
+              </a>
+            </nav>
+          </div>
+        }
       </header>
-      <main class="app-main">
+      <main id="main-content" class="app-main">
         <router-outlet />
       </main>
       <footer class="app-footer">
@@ -192,6 +246,117 @@ import { ThemeService } from './services/theme.service';
       z-index: 1;
     }
 
+    .mobile-menu-btn {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      background: var(--color-bg-sidebar);
+      color: var(--color-text-secondary);
+      flex-shrink: 0;
+    }
+
+    .mobile-nav-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(15, 23, 42, 0.45);
+      z-index: 200;
+      padding: var(--spacing-lg);
+      padding-top: 72px;
+    }
+
+    .mobile-nav-drawer {
+      display: flex;
+      flex-direction: column;
+      gap: var(--spacing-xs);
+      max-width: 320px;
+      margin-left: auto;
+      padding: var(--spacing-lg);
+      background: var(--color-bg-card);
+      border-radius: var(--radius-xl);
+      border: 1px solid var(--color-border);
+      box-shadow: var(--shadow-xl);
+    }
+
+    .mobile-nav-drawer a {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-sm);
+      padding: var(--spacing-md);
+      border-radius: var(--radius-lg);
+      color: var(--color-text-secondary);
+      font-size: var(--font-size-sm);
+      font-weight: 500;
+      text-decoration: none;
+    }
+
+    .mobile-nav-drawer a.active {
+      background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
+      color: var(--color-text-inverse);
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-sm);
+    }
+
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-sm);
+    }
+
+    .user-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: var(--radius-full);
+      object-fit: cover;
+      border: 2px solid var(--color-border);
+    }
+
+    .user-avatar-icon {
+      font-size: 32px;
+      color: var(--color-text-muted);
+    }
+
+    .auth-btn {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-xs);
+      padding: var(--spacing-xs) var(--spacing-md);
+      border-radius: var(--radius-lg);
+      font-size: var(--font-size-sm);
+      font-weight: 500;
+      transition: all 0.3s ease;
+      border: 1px solid var(--color-border);
+      background: var(--color-bg-sidebar);
+      color: var(--color-text-secondary);
+      text-decoration: none;
+      font-family: inherit;
+    }
+
+    .auth-btn:hover {
+      border-color: var(--color-primary);
+      color: var(--color-primary);
+    }
+
+    .auth-btn .material-icons-outlined {
+      font-size: 18px;
+    }
+
+    .auth-label {
+      display: inline;
+    }
+
     .theme-toggle {
       background: var(--color-bg-sidebar);
       border: 1px solid var(--color-border);
@@ -259,13 +424,18 @@ import { ThemeService } from './services/theme.service';
 
     @media (max-width: 768px) {
       .header-content {
-        flex-wrap: wrap;
+        flex-wrap: nowrap;
         gap: var(--spacing-md);
       }
       .nav-links {
-        order: 3;
-        width: 100%;
-        overflow-x: auto;
+        display: none;
+      }
+      .mobile-menu-btn {
+        display: flex;
+        margin-left: auto;
+      }
+      .mobile-nav-overlay {
+        display: block;
       }
       .logo-text {
         display: none;
@@ -274,13 +444,23 @@ import { ThemeService } from './services/theme.service';
   `]
 })
 export class AppComponent {
-  readonly themeService: ThemeService;
+  readonly themeService = inject(ThemeService);
+  readonly authService = inject(AuthService);
+  readonly mobileMenuOpen = signal(false);
 
-  constructor(themeService: ThemeService) {
-    this.themeService = themeService;
+  toggleMobileMenu(): void {
+    this.mobileMenuOpen.update((v) => !v);
+  }
+
+  closeMobileMenu(): void {
+    this.mobileMenuOpen.set(false);
   }
 
   toggleTheme(): void {
     this.themeService.toggleTheme();
+  }
+
+  signOut(): void {
+    this.authService.signOut();
   }
 }

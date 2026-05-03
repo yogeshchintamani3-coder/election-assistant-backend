@@ -59,3 +59,13 @@ export interface VoterInfoResponse {
   readonly registrationUrl: string;
   readonly absenteeVotingUrl: string;
 }
+
+export interface CountryElectionResource {
+  readonly countryCode: string;
+  readonly countryName: string;
+  readonly flagEmoji: string;
+  readonly electionCommissionName: string;
+  readonly electionCommissionUrl: string;
+  readonly voterRegistrationUrl: string;
+  readonly voterInfoDescription: string;
+}

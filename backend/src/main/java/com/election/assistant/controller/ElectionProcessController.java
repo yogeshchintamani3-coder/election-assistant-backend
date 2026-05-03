@@ -1,5 +1,6 @@
 package com.election.assistant.controller;
 
+import com.election.assistant.dto.CountryElectionResource;
 import com.election.assistant.model.Country;
 import com.election.assistant.model.ElectionProcess;
 import com.election.assistant.service.ElectionProcessService;
@@ -43,8 +44,13 @@ public class ElectionProcessController {
     public ResponseEntity<ElectionProcess> getElectionProcess(
             @PathVariable String countryCode,
             @PathVariable String electionType) {
-        return electionProcessService.getElectionProcess(countryCode, electionType)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+        return ResponseEntity.ok(electionProcessService.getElectionProcess(countryCode, electionType));
+    }
+
+    @GetMapping("/resources/{countryCode}")
+    @Operation(summary = "Get election commission and voter resource links for a country")
+    public ResponseEntity<CountryElectionResource> getCountryResources(
+            @PathVariable String countryCode) {
+        return ResponseEntity.ok(electionProcessService.getCountryResource(countryCode));
     }
 }

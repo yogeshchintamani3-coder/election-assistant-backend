@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import { authGuard } from './guards/auth.guard';
 
 export const routes: Routes = [
   {
@@ -14,12 +15,19 @@ export const routes: Routes = [
   {
     path: 'civic-search',
     loadComponent: () => import('./components/civic-search/civic-search.component')
-      .then(m => m.CivicSearchComponent)
+      .then(m => m.CivicSearchComponent),
+    canActivate: [authGuard]
   },
   {
     path: 'voter-info',
     loadComponent: () => import('./components/voter-info/voter-info.component')
-      .then(m => m.VoterInfoComponent)
+      .then(m => m.VoterInfoComponent),
+    canActivate: [authGuard]
+  },
+  {
+    path: 'login',
+    loadComponent: () => import('./components/login/login.component')
+      .then(m => m.LoginComponent)
   },
   {
     path: '**',

@@ -1,6 +1,9 @@
 package com.election.assistant.controller;
 
 import com.election.assistant.dto.ApiErrorResponse;
+import com.election.assistant.exception.ApiKeyNotConfiguredException;
+import com.election.assistant.exception.ExternalApiException;
+import com.election.assistant.exception.ResourceNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -16,6 +19,39 @@ import java.time.LocalDateTime;
 public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleResourceNotFound(ResourceNotFoundException ex) {
+        log.warn("Resource not found: {}", ex.getMessage());
+        ApiErrorResponse error = new ApiErrorResponse(
+                HttpStatus.NOT_FOUND.value(),
+                ex.getMessage(),
+                LocalDateTime.now()
+        );
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+    }
+
+    @ExceptionHandler(ApiKeyNotConfiguredException.class)
+    public ResponseEntity<ApiErrorResponse> handleApiKeyNotConfigured(ApiKeyNotConfiguredException ex) {
+        log.warn("API key not configured: {}", ex.getMessage());
+        ApiErrorResponse error = new ApiErrorResponse(
+                HttpStatus.SERVICE_UNAVAILABLE.value(),
+                ex.getMessage(),
+                LocalDateTime.now()
+        );
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(error);
+    }
+
+    @ExceptionHandler(ExternalApiException.class)
+    public ResponseEntity<ApiErrorResponse> handleExternalApiError(ExternalApiException ex) {
+        log.error("External API error: {}", ex.getMessage());
+        ApiErrorResponse error = new ApiErrorResponse(
+                HttpStatus.BAD_GATEWAY.value(),
+                "External service error: " + ex.getMessage(),
+                LocalDateTime.now()
+        );
+        return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(error);
+    }
 
     @ExceptionHandler(WebClientResponseException.class)
     public ResponseEntity<ApiErrorResponse> handleWebClientError(WebClientResponseException ex) {

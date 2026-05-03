@@ -44,7 +44,7 @@ import { ElectionService } from '../../services/election.service';
     </section>
 
     @if (electionService.loading()) {
-      <div class="loading-section">
+      <div class="loading-section" [attr.aria-busy]="electionService.loading()">
         <div class="skeleton-grid">
           @for (i of [1,2,3,4,5]; track i) {
             <div class="skeleton-card">
@@ -63,7 +63,7 @@ import { ElectionService } from '../../services/election.service';
     }
 
     @if (electionService.error()) {
-      <div class="error-banner animate-fade-in-up">
+      <div class="error-banner animate-fade-in-up" role="alert" aria-live="polite" aria-label="Error">
         <span class="material-icons-outlined">error_outline</span>
         <p>{{ electionService.error() }}</p>
         <button (click)="electionService.loadCountries()" class="btn btn-sm">Retry</button>
@@ -78,7 +78,7 @@ import { ElectionService } from '../../services/election.service';
             <span class="country-flag">{{ country.flagEmoji }}</span>
             <div>
               <h2 class="country-name">{{ country.name }}</h2>
-              <span class="country-count">{{ country.electionTypes.length }} election types</span>
+              <span class="country-count" role="status">{{ country.electionTypes.length }} election types</span>
             </div>
           </div>
           <div class="election-types">

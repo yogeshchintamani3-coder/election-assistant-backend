@@ -1,12 +1,13 @@
 import { Component, OnInit, ChangeDetectionStrategy, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ElectionService } from '../../services/election.service';
+import { ElectionQuizComponent } from '../election-quiz/election-quiz.component';
 import { StepCardComponent } from '../step-card/step-card.component';
 
 @Component({
   selector: 'app-election-timeline',
   standalone: true,
-  imports: [RouterLink, StepCardComponent],
+  imports: [RouterLink, StepCardComponent, ElectionQuizComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="timeline-page">
@@ -20,7 +21,7 @@ import { StepCardComponent } from '../step-card/step-card.component';
       </nav>
 
       @if (electionService.loading()) {
-        <div class="loading-state">
+        <div class="loading-state" [attr.aria-busy]="electionService.loading()">
           <div class="loading-header-skeleton">
             <div class="skeleton-bar wide"></div>
             <div class="skeleton-bar medium"></div>
@@ -38,13 +39,26 @@ import { StepCardComponent } from '../step-card/step-card.component';
       }
 
       @if (electionService.error()) {
-        <div class="error-banner">
+        <div class="error-banner" role="alert" aria-live="polite" aria-label="Error">
           <span class="material-icons-outlined">error_outline</span>
           <p>{{ electionService.error() }}</p>
         </div>
       }
 
       @if (electionService.selectedProcess(); as process) {
+        <div class="step-progress no-print" aria-label="Timeline progress">
+          <div class="step-progress-row">
+            <span class="step-progress-label">Step {{ activeStepIndex() + 1 }} of {{ process.steps.length }}</span>
+            <span class="step-progress-fraction">{{ activeStepIndex() + 1 }} / {{ process.steps.length }}</span>
+          </div>
+          <div class="step-progress-track">
+            <div
+              class="step-progress-fill"
+              [style.width.%]="process.steps.length ? ((activeStepIndex() + 1) / process.steps.length) * 100 : 0"
+            ></div>
+          </div>
+        </div>
+
         <header class="process-header">
           <div class="header-badge">
             <span class="material-icons-outlined">how_to_vote</span>
@@ -75,7 +89,7 @@ import { StepCardComponent } from '../step-card/step-card.component';
           <h2 class="section-heading">
             <span class="heading-icon material-icons-outlined">timeline</span>
             Election Process Steps
-            <span class="heading-count">{{ process.steps.length }} steps</span>
+            <span class="heading-count" role="status">{{ process.steps.length }} steps</span>
           </h2>
           <div class="timeline">
             <div class="timeline-track"></div>
@@ -84,7 +98,7 @@ import { StepCardComponent } from '../step-card/step-card.component';
                 <app-step-card
                   [step]="step"
                   [isActive]="activeStep() === step.order"
-                  (stepClick)="setActiveStep(step.order)"
+                  (stepClick)="setActiveStep(step.order, idx)"
                 />
               </div>
             }
@@ -126,6 +140,21 @@ import { StepCardComponent } from '../step-card/step-card.component';
             </ul>
           </section>
         </div>
+
+        <div class="timeline-actions no-print">
+          <button type="button" class="action-btn quiz-btn" (click)="toggleQuiz()">
+            <span class="material-icons-outlined">{{ showQuiz() ? 'expand_less' : 'quiz' }}</span>
+            {{ showQuiz() ? 'Hide quiz' : 'Take quiz' }}
+          </button>
+          <button type="button" class="action-btn print-btn" (click)="printPage()">
+            <span class="material-icons-outlined">print</span>
+            Print
+          </button>
+        </div>
+
+        @if (showQuiz()) {
+          <app-election-quiz [electionProcess]="process" />
+        }
       }
     </div>
   `,
@@ -157,6 +186,114 @@ import { StepCardComponent } from '../step-card/step-card.component';
 
     .breadcrumb-link:hover {
       background: rgba(59, 130, 246, 0.08);
+    }
+
+    .step-progress {
+      margin-bottom: var(--spacing-xl);
+      padding: var(--spacing-md) var(--spacing-lg);
+      background: var(--color-bg-card);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-xl);
+      animation: fadeInUp 0.45s ease both;
+    }
+
+    .step-progress-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: var(--spacing-sm);
+      font-size: var(--font-size-xs);
+      font-weight: 600;
+      color: var(--color-text-secondary);
+    }
+
+    .step-progress-fraction {
+      color: var(--color-primary);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .step-progress-track {
+      height: 10px;
+      border-radius: var(--radius-full);
+      background: var(--color-bg-sidebar);
+      overflow: hidden;
+    }
+
+    .step-progress-fill {
+      height: 100%;
+      border-radius: var(--radius-full);
+      background: linear-gradient(90deg, var(--color-primary), var(--color-secondary));
+      transition: width 0.35s ease;
+    }
+
+    .timeline-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--spacing-md);
+      margin-top: var(--spacing-2xl);
+      justify-content: center;
+    }
+
+    .action-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--spacing-sm);
+      padding: 12px 22px;
+      border-radius: var(--radius-full);
+      border: 1px solid var(--color-border);
+      background: var(--color-bg-card);
+      color: var(--color-text-primary);
+      font-weight: 600;
+      font-size: var(--font-size-sm);
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    }
+
+    .action-btn:hover {
+      border-color: var(--color-primary-light);
+      box-shadow: var(--shadow-md);
+      transform: translateY(-1px);
+    }
+
+    .action-btn .material-icons-outlined {
+      font-size: 20px;
+      color: var(--color-primary);
+    }
+
+    .quiz-btn {
+      background: linear-gradient(135deg, rgba(26, 86, 219, 0.08), rgba(124, 58, 237, 0.08));
+    }
+
+    .print-btn .material-icons-outlined {
+      font-size: 20px;
+    }
+
+    @media print {
+      .no-print {
+        display: none !important;
+      }
+
+      .timeline-page {
+        padding-bottom: 0;
+        animation: none;
+      }
+
+      .process-header,
+      .timeline-section,
+      .info-panels .panel,
+      .step-card {
+        box-shadow: none !important;
+        break-inside: avoid;
+      }
+
+      .timeline-track {
+        opacity: 0.5;
+      }
+
+      body {
+        background: white !important;
+        color: #111 !important;
+      }
     }
 
     .breadcrumb-link .material-icons-outlined {
@@ -457,6 +594,8 @@ export class ElectionTimelineComponent implements OnInit {
   private readonly router = inject(Router);
 
   readonly activeStep = signal<number>(0);
+  readonly showQuiz = signal(false);
+  readonly activeStepIndex = signal(0);
 
   ngOnInit(): void {
     const countryCode = this.route.snapshot.paramMap.get('countryCode') ?? '';
@@ -470,7 +609,20 @@ export class ElectionTimelineComponent implements OnInit {
     this.electionService.loadElectionProcess(countryCode, electionType);
   }
 
-  setActiveStep(step: number): void {
-    this.activeStep.set(this.activeStep() === step ? 0 : step);
+  setActiveStep(stepOrder: number, stepIndex: number): void {
+    if (this.activeStep() === stepOrder) {
+      this.activeStep.set(0);
+    } else {
+      this.activeStep.set(stepOrder);
+      this.activeStepIndex.set(stepIndex);
+    }
+  }
+
+  printPage(): void {
+    window.print();
+  }
+
+  toggleQuiz(): void {
+    this.showQuiz.update((v) => !v);
   }
 }

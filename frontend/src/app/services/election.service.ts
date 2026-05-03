@@ -1,6 +1,6 @@
 import { Injectable, inject, signal, computed } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { Country, ElectionProcess } from '../models/election.model';
+import { Country, CountryElectionResource, ElectionProcess } from '../models/election.model';
 import { environment } from '../../environments/environment';
 import { retry } from 'rxjs';
 
@@ -12,11 +12,13 @@ export class ElectionService {
 
   private readonly countriesState = signal<Country[]>([]);
   private readonly selectedProcessState = signal<ElectionProcess | null>(null);
+  private readonly selectedCountryResourceState = signal<CountryElectionResource | null>(null);
   private readonly loadingState = signal<boolean>(false);
   private readonly errorState = signal<string | null>(null);
 
   readonly countries = this.countriesState.asReadonly();
   readonly selectedProcess = this.selectedProcessState.asReadonly();
+  readonly selectedCountryResource = this.selectedCountryResourceState.asReadonly();
   readonly loading = this.loadingState.asReadonly();
   readonly error = this.errorState.asReadonly();
 
@@ -69,5 +71,22 @@ export class ElectionService {
 
   clearSelectedProcess(): void {
     this.selectedProcessState.set(null);
+  }
+
+  clearCountryResource(): void {
+    this.selectedCountryResourceState.set(null);
+  }
+
+  loadCountryResource(countryCode: string): void {
+    this.http.get<CountryElectionResource>(`${this.baseUrl}/resources/${countryCode}`).pipe(
+      retry(2)
+    ).subscribe({
+      next: (resource) => {
+        this.selectedCountryResourceState.set(resource);
+      },
+      error: () => {
+        this.selectedCountryResourceState.set(null);
+      }
+    });
   }
 }
