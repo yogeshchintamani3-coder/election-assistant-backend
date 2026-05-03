@@ -575,9 +575,7 @@ export class CountrySelectorComponent implements OnInit {
   private readonly router = inject(Router);
 
   ngOnInit(): void {
-    if (!this.electionService.hasCountries()) {
-      this.electionService.loadCountries();
-    }
+    this.electionService.loadCountries();
   }
 
   navigateToElection(countryCode: string, electionType: string): void {

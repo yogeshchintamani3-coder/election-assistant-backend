@@ -16,9 +16,19 @@ import { AuthService } from '../../services/auth.service';
         <h1>Welcome to Election Assistant</h1>
         <p class="login-subtitle">Sign in to access representative lookup and voter information features.</p>
 
-        <div class="google-btn-wrapper">
-          <div #googleBtn aria-label="Sign in with Google"></div>
-        </div>
+        @if (authService.isGoogleConfigured()) {
+          <div class="google-btn-wrapper">
+            <div #googleBtn aria-label="Sign in with Google"></div>
+          </div>
+          <div class="divider">
+            <span>or</span>
+          </div>
+        }
+
+        <button class="guest-btn" (click)="signInAsGuest()" aria-label="Continue as Guest">
+          <span class="material-icons-outlined">person_outline</span>
+          <span>Continue as Guest</span>
+        </button>
 
         <p class="login-note">
           <span class="material-icons-outlined">info</span>
@@ -81,8 +91,56 @@ import { AuthService } from '../../services/auth.service';
     .google-btn-wrapper {
       display: flex;
       justify-content: center;
-      margin-bottom: var(--spacing-xl);
+      margin-bottom: var(--spacing-md);
       min-height: 44px;
+    }
+
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-md);
+      margin-bottom: var(--spacing-md);
+      color: var(--color-text-muted);
+      font-size: var(--font-size-xs);
+    }
+
+    .divider::before,
+    .divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--color-border);
+    }
+
+    .guest-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--spacing-sm);
+      width: 100%;
+      padding: 12px var(--spacing-lg);
+      background: var(--color-bg-sidebar);
+      border: 2px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      color: var(--color-text-primary);
+      font-size: var(--font-size-base);
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      margin-bottom: var(--spacing-xl);
+    }
+
+    .guest-btn:hover {
+      background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
+      color: var(--color-text-inverse);
+      border-color: var(--color-primary);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 16px rgba(26, 86, 219, 0.3);
+    }
+
+    .guest-btn .material-icons-outlined {
+      font-size: 20px;
     }
 
     .login-note {
@@ -101,10 +159,10 @@ import { AuthService } from '../../services/auth.service';
 })
 export class LoginComponent implements AfterViewInit {
 
-  private readonly authService = inject(AuthService);
+  readonly authService = inject(AuthService);
   private readonly router = inject(Router);
 
-  readonly googleBtnRef = viewChild.required<ElementRef<HTMLDivElement>>('googleBtn');
+  readonly googleBtnRef = viewChild<ElementRef<HTMLDivElement>>('googleBtn');
 
   ngAfterViewInit(): void {
     if (this.authService.isAuthenticated()) {
@@ -112,10 +170,20 @@ export class LoginComponent implements AfterViewInit {
       return;
     }
 
-    try {
-      this.authService.initializeGoogleSignIn(this.googleBtnRef().nativeElement);
-    } catch {
-      // Google SDK may not be loaded yet
+    if (this.authService.isGoogleConfigured()) {
+      try {
+        const btnEl = this.googleBtnRef();
+        if (btnEl) {
+          this.authService.initializeGoogleSignIn(btnEl.nativeElement);
+        }
+      } catch {
+        // Google SDK may not be loaded yet
+      }
     }
+  }
+
+  signInAsGuest(): void {
+    this.authService.signInAsGuest();
+    this.router.navigate(['/']);
   }
 }

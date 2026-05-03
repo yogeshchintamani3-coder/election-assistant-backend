@@ -29,6 +29,7 @@ export class AuthService {
   readonly token = this.tokenState.asReadonly();
   readonly user = this.userState.asReadonly();
   readonly isAuthenticated = computed(() => this.tokenState() !== null);
+  readonly isGoogleConfigured = computed(() => (environment.googleClientId ?? '').length > 0);
 
   constructor() {
     this.restoreSession();
@@ -57,9 +58,23 @@ export class AuthService {
     });
   }
 
+  signInAsGuest(): void {
+    const guestUser: UserProfile = {
+      email: 'guest@election-assistant.app',
+      name: 'Guest User',
+      picture: '',
+    };
+    const guestToken = 'guest-session';
+    this.tokenState.set(guestToken);
+    this.userState.set(guestUser);
+    localStorage.setItem('election-assistant-token', guestToken);
+    localStorage.setItem('election-assistant-user', JSON.stringify(guestUser));
+  }
+
   signOut(): void {
     const user = this.userState();
-    if (user) {
+    const currentToken = this.tokenState();
+    if (user && currentToken !== 'guest-session') {
       try {
         google.accounts.id.revoke(user.email, () => {});
       } catch {
@@ -96,6 +111,11 @@ export class AuthService {
 
     if (token && userJson) {
       try {
+        if (token === 'guest-session') {
+          this.tokenState.set(token);
+          this.userState.set(JSON.parse(userJson));
+          return;
+        }
         const payload = this.decodeJwtPayload(token);
         const exp = Number(payload?.['exp'] ?? 0);
         if (payload && exp > 0 && exp * 1000 > Date.now()) {
