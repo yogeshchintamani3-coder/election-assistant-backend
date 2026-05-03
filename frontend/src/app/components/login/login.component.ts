@@ -27,9 +27,24 @@ import { AuthService } from '../../services/auth.service';
         @if (authService.authLoading()) {
           <div class="loading-wrapper" aria-busy="true">
             <div class="spinner"></div>
-            <p>{{ isRegisterMode() ? 'Creating your account...' : 'Signing you in...' }}</p>
+            <p>Signing you in...</p>
           </div>
         } @else {
+
+          <!-- Google Sign-In button (always in DOM) -->
+          <div class="google-section">
+            <div class="google-btn-wrapper" [class.hidden]="!authService.googleReady()">
+              <div #googleBtn aria-label="Continue with Google"></div>
+            </div>
+            @if (!authService.googleReady()) {
+              <div class="google-loading">
+                <div class="spinner-sm"></div>
+                <span>Loading Google Sign-In...</span>
+              </div>
+            }
+          </div>
+
+          <div class="divider"><span>or sign in with email</span></div>
 
           <!-- Tab Switcher -->
           <div class="tab-switcher">
@@ -86,13 +101,6 @@ import { AuthService } from '../../services/auth.service';
               <span>{{ isRegisterMode() ? 'Create Account' : 'Sign In' }}</span>
             </button>
           </form>
-
-          @if (authService.isGoogleConfigured()) {
-            <div class="divider"><span>or</span></div>
-            <div class="google-btn-wrapper">
-              <div #googleBtn aria-label="Sign in with Google"></div>
-            </div>
-          }
 
           <div class="divider"><span>or</span></div>
 
@@ -156,7 +164,7 @@ import { AuthService } from '../../services/auth.service';
     .login-subtitle {
       font-size: var(--font-size-sm);
       color: var(--color-text-secondary);
-      margin-bottom: var(--spacing-lg);
+      margin-bottom: var(--spacing-xl);
       line-height: 1.6;
     }
 
@@ -193,11 +201,51 @@ import { AuthService } from '../../services/auth.service';
       animation: spin 0.8s linear infinite;
     }
 
+    .spinner-sm {
+      width: 18px;
+      height: 18px;
+      border: 2px solid var(--color-border);
+      border-top-color: var(--color-primary);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
     @keyframes spin { to { transform: rotate(360deg); } }
 
     .loading-wrapper p {
       font-size: var(--font-size-sm);
       color: var(--color-text-secondary);
+    }
+
+    .google-section {
+      margin-bottom: var(--spacing-md);
+      min-height: 50px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .google-btn-wrapper {
+      display: flex;
+      justify-content: center;
+      min-height: 44px;
+    }
+
+    .google-btn-wrapper.hidden {
+      width: 0;
+      height: 0;
+      overflow: hidden;
+      position: absolute;
+      visibility: hidden;
+    }
+
+    .google-loading {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-sm);
+      font-size: var(--font-size-sm);
+      color: var(--color-text-muted);
+      padding: var(--spacing-sm) 0;
     }
 
     .tab-switcher {
@@ -297,13 +345,6 @@ import { AuthService } from '../../services/auth.service';
 
     .submit-btn .material-icons-outlined { font-size: 20px; }
 
-    .google-btn-wrapper {
-      display: flex;
-      justify-content: center;
-      margin-bottom: var(--spacing-sm);
-      min-height: 44px;
-    }
-
     .divider {
       display: flex;
       align-items: center;
@@ -380,8 +421,8 @@ export class LoginComponent implements AfterViewInit {
     });
 
     effect(() => {
-      if (this.authService.isGoogleConfigured() && this.authService.configLoaded()) {
-        setTimeout(() => this.tryRenderGoogleButton(), 100);
+      if (this.authService.googleReady()) {
+        this.tryRenderGoogleButton();
       }
     });
   }
@@ -395,14 +436,10 @@ export class LoginComponent implements AfterViewInit {
   }
 
   private tryRenderGoogleButton(): void {
-    if (!this.authService.isGoogleConfigured()) { return; }
-    try {
-      const btnEl = this.googleBtnRef();
-      if (btnEl) {
-        this.authService.initializeGoogleSignIn(btnEl.nativeElement);
-      }
-    } catch {
-      // Google SDK may not be loaded yet
+    if (!this.authService.googleReady()) { return; }
+    const btnEl = this.googleBtnRef();
+    if (btnEl) {
+      this.authService.initializeGoogleSignIn(btnEl.nativeElement);
     }
   }
 

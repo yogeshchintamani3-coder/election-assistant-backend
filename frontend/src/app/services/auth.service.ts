@@ -44,40 +44,49 @@ export class AuthService {
   private readonly authErrorState = signal<string | null>(null);
   private readonly googleClientIdState = signal<string>('');
   private readonly configLoadedState = signal<boolean>(false);
+  private readonly googleSdkReadyState = signal<boolean>(false);
+  private googleInitialized = false;
 
   readonly token = this.tokenState.asReadonly();
   readonly user = this.userState.asReadonly();
   readonly isAuthenticated = computed(() => this.tokenState() !== null);
   readonly isGoogleConfigured = computed(() => this.googleClientIdState().length > 0);
   readonly configLoaded = this.configLoadedState.asReadonly();
+  readonly googleSdkReady = this.googleSdkReadyState.asReadonly();
+  readonly googleReady = computed(() => this.isGoogleConfigured() && this.googleSdkReadyState());
   readonly authLoading = this.authLoadingState.asReadonly();
   readonly authError = this.authErrorState.asReadonly();
 
   constructor() {
     this.restoreSession();
     this.loadPublicConfig();
+    this.pollForGoogleSdk();
   }
 
   initializeGoogleSignIn(buttonElement: HTMLElement): void {
     const clientId = this.googleClientIdState();
-    if (!clientId) {
+    if (!clientId || !this.isGoogleSdkAvailable()) {
       return;
     }
 
-    google.accounts.id.initialize({
-      client_id: clientId,
-      callback: (response: { credential: string }) => {
-        this.ngZone.run(() => this.handleCredentialResponse(response));
-      },
-      auto_select: false,
-    });
+    if (!this.googleInitialized) {
+      google.accounts.id.initialize({
+        client_id: clientId,
+        callback: (response: { credential: string }) => {
+          this.ngZone.run(() => this.handleCredentialResponse(response));
+        },
+        auto_select: false,
+      });
+      this.googleInitialized = true;
+    }
 
     google.accounts.id.renderButton(buttonElement, {
       theme: 'outline',
       size: 'large',
       type: 'standard',
-      text: 'signin_with',
+      text: 'continue_with',
       shape: 'rectangular',
+      width: 300,
     });
   }
 
@@ -137,8 +146,33 @@ export class AuthService {
     this.tokenState.set(null);
     this.userState.set(null);
     this.authErrorState.set(null);
+    this.googleInitialized = false;
     localStorage.removeItem('election-assistant-token');
     localStorage.removeItem('election-assistant-user');
+  }
+
+  private isGoogleSdkAvailable(): boolean {
+    return typeof google !== 'undefined' &&
+           typeof google.accounts !== 'undefined' &&
+           typeof google.accounts.id !== 'undefined';
+  }
+
+  private pollForGoogleSdk(): void {
+    if (this.isGoogleSdkAvailable()) {
+      this.googleSdkReadyState.set(true);
+      return;
+    }
+    let attempts = 0;
+    const maxAttempts = 50;
+    const interval = setInterval(() => {
+      attempts++;
+      if (this.isGoogleSdkAvailable()) {
+        this.googleSdkReadyState.set(true);
+        clearInterval(interval);
+      } else if (attempts >= maxAttempts) {
+        clearInterval(interval);
+      }
+    }, 200);
   }
 
   private loadPublicConfig(): void {
